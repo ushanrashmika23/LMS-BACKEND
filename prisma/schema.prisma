@@ -1,0 +1,162 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model user {
+  id         String   @id @default(cuid())
+  email      String   @unique
+  gAuthID    String   @unique @default("none")
+  password   String
+  jwt        String   @default("none")
+  lastLogin  DateTime @default(now())
+  createdAt  DateTime @default(now())
+  roles      String   @default("student")
+  mobile     String   @unique
+  first_name String
+  last_name  String
+  is_active  Boolean  @default(true)
+  address    String
+  student    student?
+}
+
+model student {
+  call_up_no    String          @id
+  school        String
+  parent_name   String
+  parent_mobile String
+  user_id       String          @unique
+  batch_id      String
+  attendance    attendance[]
+  payment       payment[]
+  batch         batch           @relation(fields: [batch_id], references: [id])
+  user          user            @relation(fields: [user_id], references: [id])
+  student_marks student_marks[]
+
+  @@index([batch_id], map: "student_batch_id_fkey")
+}
+
+model batch {
+  id              String            @id @default(cuid())
+  name            String
+  exam_date       DateTime
+  class_fee       Float
+  is_active       Boolean           @default(true)
+  start_time      String
+  end_time        String
+  created_at      DateTime          @default(now())
+  day             String
+  class_day_id    class_day[]
+  material_access material_access[]
+  paper           paper[]
+  student         student[]
+}
+
+model class_day {
+  id         String       @id @default(cuid())
+  date       DateTime
+  batch_id   String
+  attendance attendance[]
+  batch      batch        @relation(fields: [batch_id], references: [id])
+
+  @@index([batch_id], map: "class_day_batch_id_fkey")
+}
+
+model attendance {
+  id           String    @id @default(cuid())
+  time_in      DateTime  @default(now())
+  call_up_no   String
+  class_day_id String
+  student      student   @relation(fields: [call_up_no], references: [call_up_no])
+  class_day    class_day @relation(fields: [class_day_id], references: [id])
+
+  @@index([call_up_no], map: "attendance_call_up_no_fkey")
+  @@index([class_day_id], map: "attendance_class_day_id_fkey")
+}
+
+model payment {
+  id           Int      @id @default(autoincrement())
+  amount       Float
+  payment_date DateTime @default(now())
+  month        String
+  call_up_no   String
+  student      student  @relation(fields: [call_up_no], references: [call_up_no])
+
+  @@index([call_up_no], map: "payment_call_up_no_fkey")
+}
+
+model paper {
+  id               String          @id @default(cuid())
+  paper_name       String
+  paper_date       DateTime
+  avg_marks        Float?
+  is_mark_released Boolean         @default(false)
+  created_at       DateTime        @default(now())
+  batch_id         String
+  material_id      String
+  batch            batch           @relation(fields: [batch_id], references: [id])
+  material         material        @relation(fields: [material_id], references: [id])
+  student_marks    student_marks[]
+
+  @@index([batch_id], map: "paper_batch_id_fkey")
+  @@index([material_id], map: "paper_material_id_fkey")
+}
+
+model student_marks {
+  id         String   @id @default(cuid())
+  marks      Float
+  comments   String?  @default("none")
+  created_at DateTime @default(now())
+  call_up_no String
+  paper_id   String
+  student    student  @relation(fields: [call_up_no], references: [call_up_no])
+  paper      paper    @relation(fields: [paper_id], references: [id])
+
+  @@index([call_up_no], map: "student_marks_call_up_no_fkey")
+  @@index([paper_id], map: "student_marks_paper_id_fkey")
+}
+
+model material {
+  id              String            @id @default(cuid())
+  title           String
+  description     String
+  material_url    String
+  type            String
+  lesson_id       String
+  lesson          lesson            @relation(fields: [lesson_id], references: [id])
+  material_access material_access[]
+  paper           paper[]
+
+  @@index([lesson_id], map: "material_lesson_id_fkey")
+}
+
+model lesson {
+  id          String      @id @default(cuid())
+  title       String      @unique
+  description String?
+  type        lesson_type @default(COMMON)
+  created_at  DateTime    @default(now())
+  material    material[]
+}
+
+model material_access {
+  id          String   @id @default(cuid())
+  expiry_date DateTime
+  created_at  DateTime @default(now())
+  batch_id    String
+  material_id String
+  batch       batch    @relation(fields: [batch_id], references: [id])
+  material    material @relation(fields: [material_id], references: [id])
+
+  @@index([batch_id], map: "material_access_batch_id_fkey")
+  @@index([material_id], map: "material_access_material_id_fkey")
+}
+
+enum lesson_type {
+  PURE
+  APPLIED
+  COMMON
+}
